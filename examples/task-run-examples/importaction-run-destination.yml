@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: import-pacman-
+spec:
+  taskRef:
+    name: importaction
+  workspaces:
+    - name: kubeconfig-dir
+      secret:
+        secretName: destination-config
+  params:
+    - name: receivestring
+      value: bIzAPpoanmEK9AQvqgpXlf5TeU4EFFvZ7jSUqGEeUoAZMdkFlUiva46QSZ+Zm9QnAhDKzKuNGU+u7zELhTr9iyYqjwA8PsK1Z9L36sackL2Stvo1vHcPBRag24XuAbReWKsFmF4X0b1Ds7OQ7NzK/331CMzz0Xpu11DQBkDT+f+WmakwO1i1lVrPsUvAOAJu1OhmTa2+hH1m00o3MTiL9929XXSzHSjrpihH94zbaJdioYyeZS3AdosMu6SFyo31NcnQJ6ieJJ0wR3n3t1t/kTbX8/KlcfnJn17AMjQ1BydjV2TP+T9w/yXr/9nEpJpulhZ0ZYod0CJHwpx7zXOcGeNNu+UYOElRs8Nw2Zb4vej6iBnUiMzevXY0xRvt3mwt4Mz2bc8HmKn7QW8rndT9YByww+5RXabHpkGn/pNQNWkJ0cZGM9SPYShlDRCD3/n+IQ2c5bR0Oez6SUhD+Qk7Gnu2wdFj/ah6PCL/VnlUqYIQiAYPkB3GClYNO2tFHIHil7bcIFqJji5woNdPlgazkBtIqP0yWPHMJXdm0dB+iQ58g2vzAzBtHHj9Pw
+    - name: restorepointcontent-name    
+      value: mcourcy-pacman-mcourcy-pacman-backupaction-5rtbr6cgzp
+    - name: locationprofile-name
+      value: se-lab

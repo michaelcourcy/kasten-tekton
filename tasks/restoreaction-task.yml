@@ -1,0 +1,141 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: restoreaction
+  labels:
+    app.kubernetes.io/version: "0.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Kubernetes, kasten
+    tekton.dev/tags: CLI, kubectl
+    tekton.dev/displayName: "kasten restore action"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task execute restore action, it take a restorepointcontent, a namespace where to restore and also an 
+    optional storageclassName transformation for the pvc 
+  workspaces:
+    - name: manifest-dir
+      optional: true
+    - name: kubeconfig-dir
+      optional: true
+  results:
+    - name: restoreaction-name
+      description: name of the restoreaction     
+  params:
+    - name: restorepointcontent-name
+      description: name of the exported restorepointcontent created by the export action
+    # TODO if not provided obtain this information automatically from the restorepointcontent
+    - name: targetnamespace-name
+      description: name of the target namespace where the restorepoint should be restored 
+    # TODO if not provided obtain check storage class match if not choose the default storage class
+    - name: targetstorageclass-name
+      description: name of the target storage class  
+    - name: kasten-namespace
+      description: name of the kasten namespace
+      default: kasten-io
+    # TODO Obtain the timeout from the kasten configuration
+    - name: timeout
+      description: Timeout waiting for the backup action to complete (in seconds).
+      default: 2700
+    - name: image
+      default: gcr.io/cloud-builders/kubectl@sha256:8ab94be8b2b4f3d117f02d868b39540fddd225447abf4014f7ba4765cb39f753 #image is huge
+      description: Kubectl wrapper image
+  steps:
+    - name: kubectl
+      image: $(params.image)
+      script: |
+        #!/usr/bin/env bash
+
+        set -x
+        set -e
+
+        [[ "$(workspaces.manifest-dir.bound)" == "true" ]] && \
+        cd $(workspaces.manifest-dir.path)
+
+        [[ "$(workspaces.kubeconfig-dir.bound)" == "true" ]] && \
+        [[ -f $(workspaces.kubeconfig-dir.path)/kubeconfig ]] && \
+        export KUBECONFIG=$(workspaces.kubeconfig-dir.path)/kubeconfig
+ 
+        # create the target namespace if it does not exist 
+        if ! kubectl get ns $(params.targetnamespace-name)
+        then 
+          kubectl create ns $(params.targetnamespace-name)
+        fi 
+        
+        # create a restorepoint referencing this restorepoint in the targetnamespace 
+        # we choose to create a restorepoint having the same name than the restorepointcontent 
+        if ! kubectl -n $(params.targetnamespace-name) get restorepoint $(params.restorepointcontent-name)
+        then 
+        cat <<EOF | kubectl create -o -f -
+        apiVersion: apps.kio.kasten.io/v1alpha1
+        kind: RestorePoint
+        metadata:
+          name: $(params.restorepointcontent-name)
+          namespace: $(params.targetnamespace-name)          
+        spec:
+          restorePointContentRef:
+            name: $(params.restorepointcontent-name)   
+        EOF
+        fi
+
+        # create a restoreaction having the restorepoint for subject
+        cat <<EOF | kubectl create -o jsonpath='{.metadata.name}' -f - | tee $(results.restoreaction-name.path)
+        kind: RestoreAction
+        apiVersion: actions.kio.kasten.io/v1alpha1
+        metadata:
+          generateName: restoreaction-$(params.targetnamespace-name)-
+          namespace: $(params.targetnamespace-name)
+        spec:
+          subject:
+            apiVersion: apps.kio.kasten.io/v1alpha1
+            kind: RestorePoint
+            name: $(params.restorepointcontent-name)
+            namespace: $(params.targetnamespace-name)
+          targetNamespace: $(params.targetnamespace-name)
+          # we exclude the storage class 
+          filters:
+            exludeResources:
+              - group: storage.k8s.io                
+                resource: storageclasses         
+          transforms:
+            - subject:
+                resource: persistentvolumeclaims
+              name: changeStorageClass
+              json:
+                - op: replace
+                  path: /spec/storageClassName
+                  value: $(params.targetstorageclass-name)
+        EOF
+
+        # wait for the run action to complete         
+        restoreaction=$(cat $(results.restoreaction-name.path))
+        timeout=$(params.timeout)
+        while true
+        do 
+          state=$(kubectl -n $(params.targetnamespace-name) get -o jsonpath='{.status.state}' restoreaction/$restoreaction)
+          if [[ "$state" == "Failed" ]]
+          then 
+             echo "Error runaction $runaction has failed"
+             kubectl get -o jsonpath='{.status.error}' runaction/$runaction
+             echo "remove the restorepoint $(params.restorepointcontent-name)"  
+             kubectl delete restorepoint $(params.restorepointcontent-name) -n $(params.targetnamespace-name)         
+             exit 1
+          fi
+          if [[ "$state" == "Complete" ]]
+          then 
+             echo "restoreaction $restoreaction has succeeded"
+             echo "remove the restorepoint $(params.restorepointcontent-name)"  
+             kubectl delete restorepoint $(params.restorepointcontent-name) -n $(params.targetnamespace-name)         
+          fi
+          echo "Restoreaction $restoreaction in $state state, $timeout seconds remaining"
+          sleep 5 
+          timeout=$((timeout - 5))
+          if [[ $timeout -le 0 ]]
+          then 
+            break
+          fi
+        done
+        echo "Error Restoreaction $restoreaction in $state state : Timeout !!"
+        # TODO should we create a cancel action ?
+        exit 1

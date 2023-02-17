@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: backup-pacman-
+spec:
+  taskRef:
+    name: backupaction
+  workspaces:
+    - name: kubeconfig-dir
+      secret:
+        secretName: source-config
+  params:
+    - name: namespace
+      value: mcourcy-pacman

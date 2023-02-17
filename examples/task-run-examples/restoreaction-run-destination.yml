@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: import-pacman-
+spec:
+  taskRef:
+    name: restoreaction
+  workspaces:
+    - name: kubeconfig-dir
+      secret:
+        secretName: destination-config
+  params:
+    - name: restorepointcontent-name    
+      value: mcourcy-pacman-mcourcy-pacman-backupaction-ph9xvw877w
+    - name: targetnamespace-name
+      value: mcourcy-pacman
+    - name: targetstorageclass-name
+      value: managed-premium
+    

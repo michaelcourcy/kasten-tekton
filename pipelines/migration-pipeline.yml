@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: migration-pipeline
+spec:
+  
+  params:
+    - name: namespace
+      description: the namespace that you want to migrate
+    - name: locationprofile-name
+      description: name of the location profile shared by the two clusters
+    - name: targetstorageclass-name
+      description: name of the target storage class  
+  
+  workspaces:
+    - name: source-config    
+    - name: destination-config
+  
+  tasks:
+    - name: backup
+      taskRef:
+        name: backupaction
+      workspaces:
+      - name: kubeconfig-dir
+        workspace: source-config
+      params:
+      - name: namespace
+        value: $(params.namespace)
+
+    - name: export
+      runAfter:
+        - backup
+      taskRef:
+        name: exportaction
+      workspaces:
+      - name: kubeconfig-dir
+        workspace: source-config
+      params:
+      - name: restorepoint-name
+        value: $(tasks.backup.results.restorepoint-name)
+      - name: namespace
+        value: $(params.namespace) 
+      - name: locationprofile-name
+        value: $(params.locationprofile-name) 
+    
+    - name: import
+      runAfter: 
+        - export
+      taskRef:
+        name: importaction
+      workspaces:
+      - name: kubeconfig-dir
+        workspace: destination-config
+      params:
+      - name: restorepointcontent-name
+        value: $(tasks.export.results.restorepointcontent-name)
+      - name: receivestring
+        value: $(tasks.export.results.receivestring)
+      - name: namespace
+        value: $(params.namespace)
+      - name: locationprofile-name
+        value: $(params.locationprofile-name)
+    
+  
+    - name: restore
+      runAfter: 
+        - import
+      taskRef:
+        name: restore
+      workspaces:
+      - name: kubeconfig-dir
+        workspace: destination-config
+      params:
+      - name: restorepointcontent-name
+        value: $(tasks.export.results.restorepointcontent-name) 
+      - name: targetnamespace-name
+        value: $(params.namespace)
+      - name: targetstorageclass-name
+        value: $(params.targetstorageclass-name)

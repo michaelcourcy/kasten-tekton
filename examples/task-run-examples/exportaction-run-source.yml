@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: export-pacman-
+spec:
+  taskRef:
+    name: exportaction
+  workspaces:
+    - name: kubeconfig-dir
+      secret:
+        secretName: source-config
+  params:
+    - name: namespace
+      value: mcourcy-pacman
+    - name: restorepoint-name
+      value: mcourcy-pacman-backupaction-5rtbr
+    - name: locationprofile-name
+      value: se-lab

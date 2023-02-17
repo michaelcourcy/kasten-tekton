@@ -1,0 +1,133 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: importaction
+  labels:
+    app.kubernetes.io/version: "0.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Kubernetes, kasten
+    tekton.dev/tags: CLI, kubectl
+    tekton.dev/displayName: "kasten import action"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task execute an import action it take the receivestring the profile and the expected restorepointcontent that 
+    should be created after the successful importpolicy execution. Note that Kasten for the moment does not allow the 
+    direct creation of an importAction, you have to create an importpolicy execute it and check that the expected 
+    restorepointcontent is now available. Once this is successful the policy is deleted, otherwise it's kept for further
+    debugging
+  workspaces:
+    - name: manifest-dir
+      optional: true
+    - name: kubeconfig-dir
+      optional: true
+  results:
+    - name: importpolicy-name
+      description: name of the import policy created for the importaction
+    - name: runaction-name
+      description: name of the run action that execute the import policy
+  params:
+    - name: receivestring
+      description: Value of the receivestring for creating an import action
+    - name: restorepointcontent-name
+      description: name of the exported restorepointcontent created by the export action
+    - name: kasten-namespace
+      description: name of the kasten namespace
+      default: kasten-io
+    - name: locationprofile-name
+      description: name of the location profile use to export the restore point
+    # TODO Obtain the timeout from the kasten configuration
+    - name: timeout
+      description: Timeout waiting for the backup action to complete (in seconds).
+      default: 2700
+    - name: image
+      default: gcr.io/cloud-builders/kubectl@sha256:8ab94be8b2b4f3d117f02d868b39540fddd225447abf4014f7ba4765cb39f753 #image is huge
+      description: Kubectl wrapper image
+  steps:
+    - name: kubectl
+      image: $(params.image)
+      script: |
+        #!/usr/bin/env bash
+
+        #set -x
+        set -e
+
+        [[ "$(workspaces.manifest-dir.bound)" == "true" ]] && \
+        cd $(workspaces.manifest-dir.path)
+
+        [[ "$(workspaces.kubeconfig-dir.bound)" == "true" ]] && \
+        [[ -f $(workspaces.kubeconfig-dir.path)/kubeconfig ]] && \
+        export KUBECONFIG=$(workspaces.kubeconfig-dir.path)/kubeconfig
+ 
+        cat <<EOF | kubectl create -o jsonpath='{.metadata.name}' -f - | tee $(results.importpolicy-name.path)
+        apiVersion: config.kio.kasten.io/v1alpha1
+        kind: Policy
+        metadata:
+          generateName: importaction-policy-
+          namespace: $(params.kasten-namespace)
+        spec:
+          comment: >- 
+                Import policy for importing the restorepointcontent 
+                $(params.restorepointcontent-name) on this cluster.
+          frequency: '@onDemand'
+          actions:
+          - action: import
+            importParameters:
+              profile:
+                namespace: $(params.kasten-namespace)
+                name: $(params.locationprofile-name)
+              receiveString: $(params.receivestring)
+        EOF
+        importpolicy=$(cat $(results.importpolicy-name.path))
+        echo "creating a runaction for the policy $importpolicy"
+        cat <<EOF | kubectl create -o jsonpath='{.metadata.name}' -f - | tee $(results.runaction-name.path)
+        kind: RunAction
+        apiVersion: actions.kio.kasten.io/v1alpha1
+        metadata:
+          generateName: importaction-policy-run-        
+        spec:
+          subject:
+            apiVersion: config.kio.kasten.io/v1alpha1
+            kind: Policy
+            name: $importpolicy
+            namespace: $(params.kasten-namespace)         
+        EOF
+        runaction=$(cat $(results.runaction-name.path))
+        # wait for the run action to complete         
+        timeout=$(params.timeout)
+        while true
+        do 
+          state=$(kubectl get -o jsonpath='{.status.state}' runaction/$runaction)
+          if [[ "$state" == "Failed" ]]
+          then 
+             echo "Error runaction $runaction has failed"
+             kubectl get -o jsonpath='{.status.error}' runaction/$runaction
+             exit 1
+          fi
+          if [[ "$state" == "Complete" ]]
+          then 
+             echo "Runaction $runaction has succeeded"
+             echo "Checking that the expected restorepointcontent $(params.restorepointcontent-name) exist now in this cluster"
+             if kubectl get restorepointcontent $(params.restorepointcontent-name)
+             then 
+                echo "Restorepointcontent $(params.restorepointcontent-name) successfully imported in the cluster"
+                # we delete this temporary policy 
+                kubectl delete policy -n $(params.kasten-namespace) $importpolicy
+                exit 0
+             else
+                echo "Error Runaction $runaction has succeeded however restorepointcontent $(params.restorepointcontent-name) has not been imported in the cluster"
+                exit 1
+             fi             
+          fi
+          echo "Runaction $runaction in $state state, $timeout seconds remaining"
+          sleep 5 
+          timeout=$((timeout - 5))
+          if [[ $timeout -le 0 ]]
+          then 
+            break
+          fi
+        done
+        echo "Error Runaction $runaction in $state state : Timeout !!"
+        # TODO should we create a cancel action ?
+        exit 1

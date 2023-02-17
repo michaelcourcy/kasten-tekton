@@ -1,0 +1,96 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: backupaction
+  labels:
+    app.kubernetes.io/version: "0.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Kubernetes, kasten
+    tekton.dev/tags: CLI, kubectl
+    tekton.dev/displayName: "kasten backup action"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task execute a kasten backup action it take the namespace name 
+    you want to backup as a parameter and result with the restorepoint name and backupacion name.
+  workspaces:
+    - name: manifest-dir
+      optional: true
+    - name: kubeconfig-dir
+      optional: true
+  results:
+    - name: backupaction-name
+      description: name of the backuaction that was created (in the same namespace)
+    - name: restorepoint-name
+      description: name of the restorepoint created (in the same namespace)
+  params:
+    - name: namespace
+      description: the namespace that was backed up  
+    # TODO Obtain the timeout from the kasten configuration
+    - name: timeout
+      description: Timeout waiting for the backup action to complete (in seconds).
+      default: 2700
+    - name: image
+      default: gcr.io/cloud-builders/kubectl@sha256:8ab94be8b2b4f3d117f02d868b39540fddd225447abf4014f7ba4765cb39f753 #image is huge
+      description: Kubectl wrapper image
+  steps:
+    - name: kubectl
+      image: $(params.image)
+      script: |
+        #!/usr/bin/env bash
+
+        #set -x
+        set -e
+
+        [[ "$(workspaces.manifest-dir.bound)" == "true" ]] && \
+        cd $(workspaces.manifest-dir.path)
+
+        [[ "$(workspaces.kubeconfig-dir.bound)" == "true" ]] && \
+        [[ -f $(workspaces.kubeconfig-dir.path)/kubeconfig ]] && \
+        export KUBECONFIG=$(workspaces.kubeconfig-dir.path)/kubeconfig
+
+        cat <<EOF | kubectl create -o jsonpath='{.metadata.name}' -f - | tee $(results.backupaction-name.path)
+        kind: BackupAction
+        apiVersion: actions.kio.kasten.io/v1alpha1
+        metadata:
+          generateName: $(params.namespace)-backupaction-
+          namespace: $(params.namespace)          
+        spec:
+          subject:
+            name: $(params.namespace)
+            namespace: $(params.namespace)
+        EOF
+        backupaction=$(cat $(results.backupaction-name.path))
+        # wait for the backupaction to complete 
+        
+        # can't use this method because backupaction does not implement watch
+        # kubectl -n $(params.namespace) wait --timeout=$(params.timeout) --for=jsonpath='{.status.state}'=Complete backupaction/$backupaction
+        
+        timeout=$(params.timeout)
+        while true
+        do 
+          state=$(kubectl -n $(params.namespace) get -o jsonpath='{.status.state}' backupaction/$backupaction)
+          if [[ "$state" == "Failed" ]]
+          then 
+             echo "Error Backupaction $backupaction has failed"
+             kubectl -n $(params.namespace) get -o jsonpath='{.status.error}' backupaction/$backupaction
+             exit 1
+          fi
+          if [[ "$state" == "Complete" ]]
+          then 
+             echo "Backupaction $backupaction has succeeded, outputting name of the restore point in the results"
+             kubectl -n $(params.namespace) get -o jsonpath='{.status.restorePoint.name}' backupaction/$backupaction | tee $(results.restorepoint-name.path) 
+             exit 0
+          fi
+          echo "Backupaction $backupaction in $state state, $timeout seconds remaining"
+          sleep 5 
+          timeout=$((timeout - 5))
+          if [[ $timeout -le 0 ]]
+          then 
+            break
+          fi
+        done
+        echo "Error Backupaction $backupaction in $state state : Timeout !!"
+        # TODO should we create a cancel action ?
+        exit 1

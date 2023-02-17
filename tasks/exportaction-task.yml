@@ -1,0 +1,117 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: exportaction
+  labels:
+    app.kubernetes.io/version: "0.2"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/categories: Kubernetes, kasten
+    tekton.dev/tags: CLI, kubectl
+    tekton.dev/displayName: "kasten export action"
+    tekton.dev/platforms: "linux/amd64"
+spec:
+  description: >-
+    This task execute a kasten export action it take the namespace name the restorepoint name  
+    and the location profile where you want to export the restorepoint. It output the name of the 
+    portable restorepointcontent that you'll be able to reuse in the restore action and the receiveString 
+    to create an importaction that will import this restorepointcontent.
+  workspaces:
+    - name: manifest-dir
+      optional: true
+    - name: kubeconfig-dir
+      optional: true
+  results:
+    - name: receivestring
+      description: Value of the receivestring for creating an import action
+    - name: restorepointcontent-name
+      description: name of the exported restorepointcontent created by the export action
+    - name: exportaction-name
+      description: name of the exportaction created
+  params:
+    - name: kasten-namespace
+      description: name of the kasten namespace
+      default: kasten-io
+    - name: restorepoint-name
+      description: name of the restorepoint used as a subject for the export action
+    - name: namespace
+      description: the namespace of the restorepoint
+    - name: locationprofile-name
+      description: name of the location profile use to export the restore point
+    # TODO Obtain the timeout from the kasten configuration
+    - name: timeout
+      description: Timeout waiting for the backup action to complete (in seconds).
+      default: 2700
+    - name: image
+      default: gcr.io/cloud-builders/kubectl@sha256:8ab94be8b2b4f3d117f02d868b39540fddd225447abf4014f7ba4765cb39f753 #image is huge
+      description: Kubectl wrapper image
+  steps:
+    - name: kubectl
+      image: $(params.image)
+      script: |
+        #!/usr/bin/env bash
+
+        #set -x
+        set -e
+
+        [[ "$(workspaces.manifest-dir.bound)" == "true" ]] && \
+        cd $(workspaces.manifest-dir.path)
+
+        [[ "$(workspaces.kubeconfig-dir.bound)" == "true" ]] && \
+        [[ -f $(workspaces.kubeconfig-dir.path)/kubeconfig ]] && \
+        export KUBECONFIG=$(workspaces.kubeconfig-dir.path)/kubeconfig      
+
+        cat <<EOF | kubectl create -o jsonpath='{.metadata.name}' -f - | tee $(results.exportaction-name.path)
+        kind: ExportAction
+        apiVersion: actions.kio.kasten.io/v1alpha1
+        metadata:
+          generateName: $(params.namespace)-exportaction-
+          namespace: $(params.kasten-namespace)          
+        spec:
+          subject:
+            kind: RestorePoint
+            name: $(params.restorepoint-name)
+            namespace: $(params.namespace)
+          profile:
+            name: $(params.locationprofile-name)
+            namespace: kasten-io
+          exportData:               
+            enabled: true
+        EOF
+        exportaction=$(cat $(results.exportaction-name.path))
+        echo
+        echo "outputting the receive string in the results"
+        receivestring=$(kubectl -n $(params.kasten-namespace) get -o jsonpath='{.spec.receiveString}' exportaction/$exportaction)
+        echo -n $receivestring > $(results.receivestring.path) 
+        
+        # wait for the export action to complete         
+        timeout=$(params.timeout)
+        while true
+        do 
+          state=$(kubectl -n $(params.kasten-namespace) get -o jsonpath='{.status.state}' exportaction/$exportaction)
+          if [[ "$state" == "Failed" ]]
+          then 
+             echo "Error exportaction $exportaction has failed"
+             kubectl -n $(params.kasten-namespace) get -o jsonpath='{.status.error}' exportaction/$exportaction
+             exit 1
+          fi
+          if [[ "$state" == "Complete" ]]
+          then 
+             echo "Exportaction $exportaction has succeeded"
+             echo "outputting the name of the restore point content in the results"
+             exported_restorepoint=$(kubectl -n $(params.namespace) get restorepoint -l k10.kasten.io/exportType=portableAppData|grep $(params.restorepoint-name)|awk '{print $1}' )
+             restorepointcontentname=$(kubectl get restorepoint -n $(params.namespace) $exported_restorepoint -o jsonpath='{.spec.restorePointContentRef.name}') 
+             echo -n $restorepointcontentname > $(results.restorepointcontent-name.path)
+             exit 0
+          fi
+          echo "Exportaction $exportaction in $state state, $timeout seconds remaining"
+          sleep 5 
+          timeout=$((timeout - 5))
+          if [[ $timeout -le 0 ]]
+          then 
+            break
+          fi
+        done
+        echo "Error Exportaction $exportpaction in $state state : Timeout !!"
+        # TODO should we create a cancel action ?
+        exit 1

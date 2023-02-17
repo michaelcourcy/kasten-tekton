@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: migration-pipeline-run-
+spec:
+  pipelineRef:
+    name: migration-pipeline
+  workspaces:
+  - name: source-config
+    secret:
+      secretName: source-config
+  - name: destination-config
+    secret:
+      secretName: destination-config
+  params:
+  - name: namespace
+    value: mcourcy-pacman
+  - name: locationprofile-name
+    value: se-lab  
+  - name: targetstorageclass-name
+    value: <change-me>
