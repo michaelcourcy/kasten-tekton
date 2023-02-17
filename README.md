@@ -69,9 +69,9 @@ kubectl create secret generic source-config --from-file=kubeconfig=source-config
 kubectl create secret generic destination-config --from-file=kubeconfig=destination-config
 ```
 
-Create an app on destination
+Create the pacman app on source
 ```
-kubectl config use-context <destination>
+kubectl config use-context <source>
 helm repo add pacman https://shuguet.github.io/pacman/
 helm repo update
 helm install pacman pacman/pacman -n mcourcy-pacman --create-namespace --set service.type=LoadBalancer 
