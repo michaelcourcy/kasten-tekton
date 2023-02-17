@@ -26,11 +26,15 @@ They all have params and result that can consume each other in a pipeline (see t
 
 ## Test it 
 
-We suppose you already have 2 clusters that we'll call source and destination and Kasten install on both of them. 
+We suppose you already have 2 clusters that we'll call source and destination and Kasten installed on both of them. 
 
-You're going to install tekton on one of these cluster or spin up a new cluster. We'll demonstrate the latter.
+You're going to install Tekton on one of these cluster or spin up a new cluster. We'll demonstrate the latter.
 
-### Spin up kind cluster with tekton 
+
+![Migration pipeline](doc/media/migration.png)
+
+
+### Spin up a Kind cluster with tekton 
 
 ```
 git clone git@github.com:tektoncd/plumbing.git

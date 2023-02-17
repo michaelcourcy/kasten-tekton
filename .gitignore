@@ -15,6 +15,9 @@
 *.local.yaml
 *.local.yml
 
+.DS_Store
+*.DS_Store
+
 # Dependency directories (remove the comment below to include it)
 # vendor/ 
 
