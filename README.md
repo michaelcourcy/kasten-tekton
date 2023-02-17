@@ -4,8 +4,10 @@
 
 Kasten-Tekton demonstrates how you can encapsulate Kasten Action and Policy in Tekton Task. 
 
-With this approach you can orchestrate complex migration scenario with Tekton or include Kasten Action into your
-existing pipleline.
+By organising Kasten Tekton Task in pipeline you can orchestrate complex or repetitive migration scenario.
+
+You can also use Kasten Tekton Task inside your existing Tekton pipeline, for instance you want to backup 
+your application before deploying a new version with a lot of potential impact on your data model.
 
 ## Disclaimer 
 
