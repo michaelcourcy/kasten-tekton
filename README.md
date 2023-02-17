@@ -40,7 +40,7 @@ You're going to install Tekton on one of these cluster or spin up a new cluster.
 ```
 git clone git@github.com:tektoncd/plumbing.git
 cd plumbing/hack 
-# -k if for docker without it's podman
+# -k for docker without it's podman
 ./tekton_in_kind.sh -k 
 # the script launch port-forward on 9097 hence you can directly
 open http://localhost:9097
