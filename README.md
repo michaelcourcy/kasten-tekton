@@ -27,6 +27,7 @@ They all have params and result that can consume each other in a pipeline (see t
 ## Test it 
 
 We suppose you already have 2 clusters that we'll call source and destination and Kasten installed on both of them. 
+On the source the pacman application is installed and we're going to migrate it on the destination cluster.
 
 You're going to install Tekton on one of these cluster or spin up a new cluster. We'll demonstrate the latter.
 
