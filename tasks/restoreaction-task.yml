@@ -67,7 +67,7 @@ spec:
         # we choose to create a restorepoint having the same name than the restorepointcontent 
         if ! kubectl -n $(params.targetnamespace-name) get restorepoint $(params.restorepointcontent-name)
         then 
-        cat <<EOF | kubectl create -o -f -
+        cat <<EOF | kubectl create -f -
         apiVersion: apps.kio.kasten.io/v1alpha1
         kind: RestorePoint
         metadata:
@@ -124,9 +124,8 @@ spec:
           fi
           if [[ "$state" == "Complete" ]]
           then 
-             echo "restoreaction $restoreaction has succeeded"
-             echo "remove the restorepoint $(params.restorepointcontent-name)"  
-             kubectl delete restorepoint $(params.restorepointcontent-name) -n $(params.targetnamespace-name)         
+             echo "restoreaction $restoreaction has succeeded" 
+             exit 0        
           fi
           echo "Restoreaction $restoreaction in $state state, $timeout seconds remaining"
           sleep 5 

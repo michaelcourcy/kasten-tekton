@@ -16,6 +16,6 @@ spec:
   - name: namespace
     value: mcourcy-pacman
   - name: locationprofile-name
-    value: se-lab  
+    value: <change-me>  
   - name: targetstorageclass-name
     value: <change-me>
