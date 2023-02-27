@@ -63,7 +63,7 @@ Create the kubeconfig workspaces for source and destination
 kubectl config use-context <source>
 ./sa-config.sh source-cluster https://<source-api> kasten-io k10-k10 > source-config
 kubectl config use-context <destination>
-./sa-config.sh destination-cluster https://<destination-api> kasten-io k10-k10 > eks-config
+./sa-config.sh destination-cluster https://<destination-api> kasten-io k10-k10 > destination-config
 kubectl config use-context kind-tekton
 kubectl create secret generic source-config --from-file=kubeconfig=source-config
 kubectl create secret generic destination-config --from-file=kubeconfig=destination-config
