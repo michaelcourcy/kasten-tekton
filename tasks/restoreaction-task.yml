@@ -47,7 +47,7 @@ spec:
       script: |
         #!/usr/bin/env bash
 
-        set -x
+        #set -x
         set -e
 
         [[ "$(workspaces.manifest-dir.bound)" == "true" ]] && \
