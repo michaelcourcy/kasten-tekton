@@ -14,7 +14,7 @@ spec:
       secretName: destination-config
   params:
   - name: namespace
-    value: mcourcy-pacman
+    value: pacman
   - name: locationprofile-name
     value: <change-me>  
   - name: targetstorageclass-name

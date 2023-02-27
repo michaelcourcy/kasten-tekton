@@ -61,9 +61,9 @@ Create the kubeconfig workspaces for source and destination
 
 ```
 kubectl config use-context <source>
-./sa-config.sh aro-cluster https://<source-api> kasten-io k10-k10 > source-config
+./sa-config.sh source-cluster https://<source-api> kasten-io k10-k10 > source-config
 kubectl config use-context <destination>
-./sa-config.sh eks-cluster https://<destination-api> kasten-io k10-k10 > eks-config
+./sa-config.sh destination-cluster https://<destination-api> kasten-io k10-k10 > eks-config
 kubectl config use-context kind-tekton
 kubectl create secret generic source-config --from-file=kubeconfig=source-config
 kubectl create secret generic destination-config --from-file=kubeconfig=destination-config
@@ -74,14 +74,15 @@ Create the pacman app on source
 kubectl config use-context <source>
 helm repo add pacman https://shuguet.github.io/pacman/
 helm repo update
-helm install pacman pacman/pacman -n mcourcy-pacman --create-namespace --set service.type=LoadBalancer 
+helm install pacman pacman/pacman -n pacman --create-namespace --set service.type=LoadBalancer 
 ```
 
 check you can access the pacman board and record a game in the high score.
 
 
-Launch the migration of pacman from source to destination, edit the migration-pipeline-run.yaml file 
-and change the targetstorageclass-name value.
+Edit the migration-pipeline-run.yaml file : 
+- change the locationprofile-name name with the location profile in the source cluster.
+- change the targetstorageclass-name value with the storage class on the destination cluster 
 
 ```
 kubectl create -f examples/pipeline-run-examples/migration-pipeline-run.yml
