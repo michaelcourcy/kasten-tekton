@@ -1,0 +1,113 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: fetch-build-push-backup-deploy
+spec:
+  description: |
+    This pipeline clones a git repo, builds a Docker image with Kaniko and
+    pushes it to a registry, then it backups the app before deploying a new version with helm.   
+  params:
+  # fetch
+  - name: repo-url
+    type: string
+    description: url for git-clone
+  # push
+  - name: registry
+    type: string 
+    description: "where to push the image resistry/repository/image"
+  - name: repository
+    type: string 
+    description: "where to push the image resistry/repository/image"
+  - name: image
+    type: string 
+    description: "where to push the image resistry/repository/image"
+  # backup
+  - name: release_namespace
+    description: The helm release namespace
+  # deploy
+  - name: helm_repo
+    description: "Specify a specific helm repo"
+  - name: chart_name
+    description: "Specify chart name that will be deployed"
+  - name: release_version
+    description: The helm release version in semantic versioning format
+    default: "v1.0.0"
+  - name: release_name
+    description: The helm release name
+    default: "helm-release"
+    default: ""
+  - name: overwrite_values
+    description: "Specify the values you want to overwrite, comma separated: autoscaling.enabled=true,replicas=1"
+    default: ""
+  workspaces:
+  # fetch
+  - name: git-credentials  
+  # build
+  - name: code-source
+  # push
+  - name: docker-credentials
+  # backup deploy
+  - name: kubeconfig
+  
+  tasks:
+  # fetch
+  - name: fetch-source
+    taskRef:
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: code-source
+    - name: ssh-directory
+      workspace: git-credentials
+    params:
+    - name: url
+      value: $(params.repo-url)
+  # build push
+  - name: build-push
+    runAfter: ["fetch-source"]
+    taskRef:
+      name: kaniko
+    workspaces:
+    - name: source
+      workspace: code-source
+    - name: dockerconfig
+      workspace: docker-credentials
+    params:
+    - name: IMAGE
+      value: "$(params.registry)/$(params.repository)/$(params.image):$(tasks.fetch-source.results.commit)"
+    - name: EXTRA_ARGS
+      value: 
+      - "--customPlatform=linux/amd64"
+  # backup
+  - name: backup
+    taskRef:
+      name: backupaction
+    workspaces:
+    - name: kubeconfig-dir
+      workspace: kubeconfig
+    params:
+    - name: namespace
+      value: $(params.release_namespace)
+  # deploy
+  - name: helm-deploy
+    runAfter: 
+    - backup
+    - build-push
+    taskRef: 
+      name: helm-upgrade
+    workspaces:
+    - name: kubeconfig-dir
+      workspace: kubeconfig
+    params:
+    - name: helm_repo
+      value: $(params.helm_repo)
+    - name: chart_name
+      value: $(params.chart_name)
+    - name: release_version
+      value: $(params.release_version)
+    - name: release_name
+      value: $(params.release_name)
+    - name: release_namespace
+      value: $(params.release_namespace)
+    - name: overwrite_values
+      value: "service.type=LoadBalancer,$(params.release_name).image.registry=$(params.registry),$(params.release_name).image.repository=$(params.repository),$(params.release_name).image.image=$(params.image),$(params.release_name).image.tag=$(tasks.fetch-source.results.commit)"

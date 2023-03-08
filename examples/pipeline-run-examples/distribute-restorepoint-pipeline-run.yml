@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: distribute-restorerpoint-pipeline-run-
+spec:
+  pipelineRef:
+    name: distribute-restorepoint-pipeline
+  workspaces:
+  - name: config
+    secret:
+      secretName: source-config
+  params:
+  - name: namespace
+    value: pacman
+  - name: locationprofile-name-1
+    value: <change-me>
+  - name: locationprofile-name-2
+    value: <change-me>

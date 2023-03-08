@@ -1,0 +1,57 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: fetch-build-push-backup-deploy-
+spec:
+  pipelineRef:
+    name: fetch-build-push-backup-deploy
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  workspaces:
+  # fetch
+  - name: git-credentials
+    secret:
+      secretName: git
+  # build 
+  - name: code-source
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  # push
+  - name: docker-credentials
+    secret:
+      secretName: docker-credentials
+  # backup deploy
+  - name: kubeconfig
+    secret:
+      secretName: <changeme> # eks-config
+  params:
+  # fetch
+  - name: repo-url
+    value: <changeme> # git@github.com:michaelcourcy/pacman.git
+  # push
+  - name: registry
+    value: <changeme> # docker.io
+  - name: repository
+    value: <changeme> # michaelcourcy
+  - name: image
+    value: pacman
+  # backup
+  - name: release_namespace
+    value: <changeme> # mcourcy-pacman
+  # deploy
+  - name: helm_repo
+    value: https://shuguet.github.io/pacman/
+  - name: chart_name
+    value: pacman/pacman
+  - name: release_version
+    value: 0.1.7
+  - name: release_name
+    value: pacman
+  
+  

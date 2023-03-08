@@ -16,6 +16,6 @@ spec:
   - name: namespace
     value: pacman
   - name: locationprofile-name
-    value: <change-me>  
+    value: <change-me> # se-lab
   - name: targetstorageclass-name
-    value: <change-me>
+    value: <change-me> # managed-premium 

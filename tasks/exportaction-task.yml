@@ -99,7 +99,7 @@ spec:
           then 
              echo "Exportaction $exportaction has succeeded"
              echo "outputting the name of the restore point content in the results"
-             exported_restorepoint=$(kubectl -n $(params.namespace) get restorepoint -l k10.kasten.io/exportType=portableAppData|grep $(params.restorepoint-name)|awk '{print $1}' )
+             exported_restorepoint=$(kubectl -n $(params.namespace) get restorepoint -l k10.kasten.io/exportType=portableAppData,k10.kasten.io/exportProfile=$(params.locationprofile-name)|grep $(params.restorepoint-name)|awk '{print $1}' )
              restorepointcontentname=$(kubectl get restorepoint -n $(params.namespace) $exported_restorepoint -o jsonpath='{.spec.restorePointContentRef.name}') 
              echo -n $restorepointcontentname > $(results.restorepointcontent-name.path)
              exit 0
