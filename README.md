@@ -130,6 +130,8 @@ kubectl create -f examples/pipeline-run-examples/distribute-restorepoint-pipelin
 
 ## Test backup before deploy 
 
+![backup before deploy](doc/media/fetch-build-push-backup-deploy.png) 
+
 In this pipeline we do the classical CI/CD operaion 
 - fetch: we fecth the code source
 - build: we build a new socker image from the source
@@ -186,7 +188,7 @@ kubectl get po -n mcourcy-pacman -o yaml | grep pacman: | grep image
 
 `17d6414e32edeb11c1eb89ed679f774fc3962208` is the sha value of the last commit 
 
-### Introducea breaking change that erase all the registered score 
+### Introduce a breaking change that erase all the registered score 
 
 In the pacman application insert this code in routes/highscores.js line 57
 
