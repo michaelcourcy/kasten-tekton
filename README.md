@@ -215,7 +215,7 @@ git push origin main
 
 ### redeploy 
 
-Now rebuild and redeploy 
+Now re-run the pipeline.
 ```
 kubectl create -f examples/pipeline-run-examples/distribute-restorepoint-pipeline-run.yml
 ```
