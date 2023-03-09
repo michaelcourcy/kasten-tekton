@@ -225,7 +225,7 @@ Create a new highscore, all the previous highscore has beed removed, that's a lo
 ### Restore
 
 Fortunately the pipeline include a backupaction, go to the latest restore point in Kasten GUI and 
-restore, you should get back your previous high scores. Beside you get the back previous image that 
+restore, you should get back your previous high scores. Beside you get back the previous image that 
 does not have this issue.
 
 
