@@ -145,7 +145,7 @@ In this pipeline we do the classical CI/CD operation
 See the [video of the ci/cd that embed a restore action](doc/media/videos/03-backup-before-deploy.mp4).
 
 But before `deploy` we insert a backup action so that if the anything wrong happen with the new version 
-of the app we have a way to revert to the previous version of the application. Deploy now depends on builpucsh and backup.
+of the app we have a way to revert to the previous version of the application. Deploy now depends on build-push and backup.
 
 ### Add git-clone and kaniko task 
 
