@@ -50,6 +50,7 @@ spec:
   - name: kubeconfig
   
   tasks:
+  
   # fetch
   - name: fetch-source
     taskRef:
@@ -62,6 +63,7 @@ spec:
     params:
     - name: url
       value: $(params.repo-url)
+  
   # build push
   - name: build-push
     runAfter: ["fetch-source"]
@@ -78,6 +80,7 @@ spec:
     - name: EXTRA_ARGS
       value: 
       - "--customPlatform=linux/amd64"
+  
   # backup
   - name: backup
     taskRef:

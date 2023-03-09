@@ -18,6 +18,10 @@
 .DS_Store
 *.DS_Store
 
+*.pptx
+*.excalidraw
+*.cmproj
+
 # Dependency directories (remove the comment below to include it)
 # vendor/ 
 

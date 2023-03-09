@@ -1,6 +1,6 @@
 # Kasten Tekton
 
-![Kasten Tekton Logo](doc/media/kasten-tekton.png)
+![Kasten Tekton Logo](doc/media/images/kasten-tekton.png)
 
 Kasten-Tekton demonstrates how you can encapsulate Kasten Action and Policy in Tekton Task. 
 
@@ -40,7 +40,7 @@ On the source the pacman application is installed and we're going to migrate it 
 You're going to install Tekton on one of these cluster or spin up a new cluster. We'll demonstrate the latter.
 
 
-![Migration pipeline](doc/media/migration.png)
+![Migration pipeline](doc/media/images/migration.png)
 
 
 ### Spin up a Kind cluster with tekton 
@@ -101,7 +101,7 @@ Check pacman app on the destination, control high score match with the source.
 The goal is to send a backup to 2 different location profiles, one backupaction is started 
 followed by 2 concurrent exportactions.
 
-![Ditribute restorepoint pipeline](doc/media/distribute-restorepoint.png)
+![Ditribute restorepoint pipeline](doc/media/images/distribute-restorepoint.png)
 
 Create the tekton kind cluster (as discribed in the migration pipeline) 
 or use a cluster where tekton is installed.
@@ -130,9 +130,9 @@ kubectl create -f examples/pipeline-run-examples/distribute-restorepoint-pipelin
 
 ## Test backup before deploy 
 
-![backup before deploy](doc/media/fetch-build-push-backup-deploy.png) 
+![backup before deploy](doc/media/images/fetch-build-push-backup-deploy.png) 
 
-In this pipeline we do the classical CI/CD operaion 
+In this pipeline we do the classical CI/CD operation 
 - fetch: we fecth the code source
 - build: we build a new socker image from the source
 - push: we push the image to a docker registry 
@@ -194,8 +194,8 @@ In the pacman application insert this code in routes/highscores.js line 57
 
 ```
 //error ???? why did I write that !!!! 
-//ahhhh too late ....
 db.collection('highscore').remove()
+//ahhhh too late ....
 ```
 
 With this breaking changes the next time someone will we create a new highscore all 
