@@ -42,6 +42,9 @@ You're going to install Tekton on one of these cluster or spin up a new cluster.
 
 ![Migration pipeline](doc/media/images/migration.png)
 
+See the [migration video with the Kasten GUI](doc/media/videos/01-migration-gui.mp4)
+
+See the [migration video with Tekton](doc/media/videos/02-migration-tekton.mp4)
 
 ### Spin up a Kind cluster with tekton 
 
@@ -57,6 +60,7 @@ open http://localhost:9097
 ```
 
 ### install the Kasten Tekton Tasks and the migration pipeline
+
 
 ```
 kubectl create -f tasks/
@@ -137,6 +141,8 @@ In this pipeline we do the classical CI/CD operation
 - build: we build a new socker image from the source
 - push: we push the image to a docker registry 
 - deploy: we deploy the app with helm on a cluster and we configure helm to use this image 
+
+See the [video](doc/media/videos/03-backup-before-deploy.mp4)
 
 But between `push` and `deploy` we insert a backup action so that if the anything wrong happen with the new version 
 of the app we have a way to revert to the previous version of the application.
@@ -219,7 +225,8 @@ Create a new highscore, all the previous highscore has beed removed, that's a lo
 ### Restore
 
 Fortunately the pipeline include a backupaction, go to the latest restore point in Kasten GUI and 
-restore, you should get back your previous high scores.
+restore, you should get back your previous high scores. Beside you get the back previous image that 
+does not have this issue.
 
 
 
